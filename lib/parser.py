@@ -17,11 +17,6 @@ class Opinion:
       self.opinion.append(page.getContents().getData().decode(encoding="utf-8",errors="strict"))
     return self.opinion
 
-  def splitMCIDs(self):
-    pattern = "<</MCID \d+ >>"
-    self.MCIDs = re.compile(pattern).split(str(self))
-    return self.MCIDs
-
   class Parser:
     
     def __init__(self, opinion):
