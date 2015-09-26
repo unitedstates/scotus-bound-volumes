@@ -4,4 +4,5 @@ import json
 
 fname = os.path.dirname(os.path.realpath(__file__)) + "/lib/test_opinion.pdf"
 o = Opinion(fname)
-print(o.parse.html)
+with open('test.html', 'w') as f:
+  f.write(o.parse.html.encode().decode())
