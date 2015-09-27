@@ -4,6 +4,7 @@ import re
 import json
 from PyPDF2 import PdfFileReader
 import pdb
+from ftfy import fix_text, explain_unicode
 
 class Opinion:
 
@@ -31,12 +32,9 @@ class Opinion:
       self.opinion = self.extractTextByOperator()
       self.html = ''.join(list(map(lambda x: x["results"],self.opinion)))
 
-    # So, here's the magic. First, split based on style (e.g., italicized and whatnot) (assign a class="style-1" or class="style-2"). Then, look for the first instance of r"(([\d|.]+)(\s)){6}" within the split. The first float in that regex is actually the font size (assign class=". So, grab the first float, note its size, grab all of the internal text and look for the next instance. If it's the same size, append. If not, group into another bucket.
-    # Note, I haven't done the _first_ part yet here, which is to split based on style... more TK.
-
     def extractText(self):
       """
-      Extract the text from the PDF, grouping by font size.
+      DEPRECATED: Extract the text from the PDF, grouping by font size.
       """
       text_pattern = "(?<=\().*?(?=\))"  
       match_pattern = "(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)Tm"
@@ -58,6 +56,9 @@ class Opinion:
       return self.opinion.opinion
 
     def extractTextByOperator(self):
+      """
+      This is the workhorse
+      """
       from PyPDF2.pdf import ContentStream
       from PyPDF2.generic import TextStringObject
 
@@ -67,25 +68,30 @@ class Opinion:
         contents = page["/Contents"].getObject()
         contents = ContentStream(contents, page.pdf)
         out = ""
+        span = ""
         c = None
         for operands, operator in contents.operations:
-          if operator == b'Tf':
-            out += '[[font-style-' + str(operands[0])[1:] + '-' + str(operands[1]) + ']]'
+          if operator == b'Tf' and operands[1] != " ":
+            # pdb.set_trace()
+            span = '<span class="font-style-' + str(operands[0])[1:] + '-' + str(operands[1]) + '">'
+            out += '</span>' + span
           if operator == b'Tm':
             font_size = operands[3]
             if c != font_size:
-              out += '</div>\n<div class="font-size-' + str(self.getOrUpdateSize(font_size)) + '">'
+              out += '</span></div>\n<div class="font-size-' + str(self.getOrUpdateSize(font_size)) + '">' + span
               c = font_size
           elif operator == b'Tj':
-            out += operands[0].original_bytes.decode('cp1252')
+            out += fix_text(operands[0].original_bytes.decode('cp1252'), fix_entities=False, fix_character_width=False)
           elif operator == b'TJ':
             for i in operands[0]:
               if not isinstance(i, int):
-                out += i.original_bytes.decode('cp1252')
-          # elif operator == b'T*':
-            # out += "<br/>"
-          # elif operator == b'Td':# or operator == b'TD':
-            # out += "<br/>"
+                out += fix_text(i.original_bytes.decode('cp1252'), fix_entities=False,fix_character_width=False)
+
+          elif operator == b'T*':
+            out += "\n"
+          elif operator == b'Td' or operator == b'TD':
+            out += "\n"
+        out += "</span></div>"  
         self.opinion.opinion[idx]["results"] += out
       return self.opinion.opinion
 
