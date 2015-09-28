@@ -32,29 +32,6 @@ class Opinion:
       self.opinion = self.extractTextByOperator()
       self.html = ''.join(list(map(lambda x: x["results"],self.opinion)))
 
-    def extractText(self):
-      """
-      DEPRECATED: Extract the text from the PDF, grouping by font size.
-      """
-      text_pattern = "(?<=\().*?(?=\))"  
-      match_pattern = "(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)(\d+(?:\.\d+)?\s)Tm"
-      for idx, page in enumerate(self.opinion.opinion):
-        r = re.split(match_pattern, page["contents"])
-        r.pop(0)
-        self.opinion.opinion[idx]["results"] = ""
-        for i, m in enumerate(r):
-          out = ""
-          if i % 2 == 0:
-            size = re.match('([\d|.]+)', m).group(0)
-            c = self.getOrUpdateSize(size)
-            out += "<span class='style-" + str(c) + "'>"
-          else:
-            text = re.findall(text_pattern,''.join(m))
-            out += ''.join(text)
-            out += "</span>"
-          self.opinion.opinion[idx]["results"] += out
-      return self.opinion.opinion
-
     def extractTextByOperator(self):
       """
       This is the workhorse
@@ -101,17 +78,6 @@ class Opinion:
       except:
         self.sizes.append(size)
         return len(self.sizes) - 1
-
-    # Not working yet...
-    def splitText(self):
-      for idx, page in enumerate(self.opinion.opinion):
-        self.opinion.opinion[idx]["contents"] = page["contents"].split("/T1_")
-        self.opinion.opinion[idx]["text"] = {}
-        for i, block in enumerate(self.opinion.opinion[idx]["contents"]):
-          self.opinion.opinion[idx]["text"][i] = {}
-          self.opinion.opinion[idx]["text"][i]["text"] = self.extractText(block)
-          self.opinion.opinion[idx]["text"][i]["style"] = block[0]
-      return self.opinion.opinion
 
 if __name__ == "__main__":
   import os
